@@ -181,3 +181,28 @@ export async function login(data: {
   }
   return res.json();
 }
+
+export type HomeSection = {
+  serviceSlug: string;
+  label: string;
+  providers: Provider[];
+};
+
+export async function fetchHomeSections(limit = 8): Promise<HomeSection[]> {
+  const res = await fetch(`${API_URL}/api/providers/home?limit=${limit}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch providers");
+  const data = await res.json();
+  return data.sections;
+}
+
+export async function fetchProvidersBySlugs(slugs: string[]): Promise<Provider[]> {
+  if (slugs.length === 0) return [];
+  const res = await fetch(
+    `${API_URL}/api/providers?slugs=${encodeURIComponent(slugs.join(","))}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) return [];
+  return res.json();
+}
