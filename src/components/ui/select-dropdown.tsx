@@ -53,7 +53,7 @@ export function SelectDropdown({
             className="group w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-ink hover:bg-ink hover:text-white hover:translate-x-1 transition-all duration-150 ease-out"
           >
             <span>{placeholder}</span>
-            {value === "" && <Check size={14} className="text-coral" />}
+            {value === "" && <Check size={14} className="text-coral group-hover:text-white" />}
           </button>
 
           <div className="max-h-72 overflow-y-auto">
