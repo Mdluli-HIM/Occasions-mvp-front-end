@@ -1,18 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/lib/cart-store";
 import { checkoutCart } from "@/lib/api";
+import { useAuthStore } from "@/lib/auth-store";
 import { Trash2 } from "lucide-react";
 
 export default function CartPage() {
   const router = useRouter();
   const { items, removeItem, updateItem, clear } = useCartStore();
+  const { user, token } = useAuthStore();
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+
+  useEffect(() => {
+    if (!user) router.replace("/login?redirect=/cart");
+  }, [user, router]);
 
   const total = items.reduce((sum, i) => sum + i.priceValue * i.guests, 0);
   const allScheduled = items.every((i) => i.eventDate && i.startTime);
@@ -29,6 +35,7 @@ export default function CartPage() {
 
     try {
       const { checkoutId } = await checkoutCart({
+        token: token!,
         guestName: String(form.get("name")),
         guestEmail: String(form.get("email")),
         guestPhone: String(form.get("phone")),
@@ -46,6 +53,8 @@ export default function CartPage() {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
     }
   }
+
+  if (!user) return null;
 
   if (items.length === 0) {
     return (

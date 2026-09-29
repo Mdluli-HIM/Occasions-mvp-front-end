@@ -80,27 +80,6 @@ export async function fetchProvider(slug: string): Promise<Provider | null> {
   return res.json();
 }
 
-export async function createBooking(data: {
-  packageId: string;
-  guestName: string;
-  guestEmail: string;
-  guestPhone: string;
-  guests: number;
-  eventDate: string;
-  startTime: string;
-}): Promise<Booking> {
-  const res = await fetch(`${API_URL}/api/bookings`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error ?? "Failed to create booking");
-  }
-  return res.json();
-}
-
 export async function fetchBooking(id: string): Promise<Booking | null> {
   const res = await fetch(`${API_URL}/api/bookings/${id}`, { cache: "no-store" });
   if (res.status === 404) return null;
@@ -109,6 +88,7 @@ export async function fetchBooking(id: string): Promise<Booking | null> {
 }
 
 export async function checkoutCart(data: {
+  token: string;
   guestName: string;
   guestEmail: string;
   guestPhone: string;
@@ -119,10 +99,11 @@ export async function checkoutCart(data: {
     startTime: string;
   }[];
 }): Promise<{ checkoutId: string; bookings: Booking[] }> {
+  const { token, ...body } = data;
   const res = await fetch(`${API_URL}/api/bookings/checkout`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
