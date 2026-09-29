@@ -206,3 +206,12 @@ export async function fetchProvidersBySlugs(slugs: string[]): Promise<Provider[]
   if (!res.ok) return [];
   return res.json();
 }
+
+export async function fetchMyBookings(token: string): Promise<Booking[]> {
+  const res = await fetch(`${API_URL}/api/bookings/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Failed to fetch your bookings");
+  return res.json();
+}

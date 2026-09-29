@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Store } from "lucide-react";
+import Image from "next/image";
+import { Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { getMyListing, setListingStatus, type MyListing } from "@/lib/provider-api";
 
@@ -54,19 +55,50 @@ export default function ListingsPage() {
       {loading ? (
         <p className="text-black/50">Loading your listing…</p>
       ) : !listing ? (
-        <div className="flex flex-col items-center text-center py-20">
-          <div className="h-20 w-20 rounded-2xl bg-coral-soft text-coral flex items-center justify-center mb-6">
-            <Store size={36} />
+        <div className="py-6">
+          <div className="grid gap-8 sm:grid-cols-3">
+            {[
+              {
+                src: "/images/provider-onboarding/about-business.png",
+                title: "Tell us about your business",
+                body: "Share what you offer, where you serve, and how customers can reach you.",
+              },
+              {
+                src: "/images/provider-onboarding/preview-listing.png",
+                title: "Preview your listing",
+                body: "See exactly what customers will see, before anyone else does.",
+              },
+              {
+                src: "/images/provider-onboarding/stand-out.png",
+                title: "Stand out to customers",
+                body: "Add photos and packages that show off your best work.",
+              },
+            ].map((step) => (
+              <div key={step.title}>
+                <div className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-offwhite">
+                  <Image
+                    src={step.src}
+                    alt=""
+                    fill
+                    sizes="(min-width: 640px) 33vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+                <h3 className="mt-4 font-semibold text-ink">{step.title}</h3>
+                <p className="mt-1 text-sm text-black/55">{step.body}</p>
+              </div>
+            ))}
           </div>
-          <p className="text-lg text-ink mb-6">
-            Create a listing and start getting booked.
-          </p>
-          <Link
-            href="/provider/listings/new"
-            className="inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-semibold text-white hover:bg-coral-hover transition-colors"
-          >
-            <Plus size={18} /> Create listing
-          </Link>
+
+          <div className="mt-12 flex flex-col items-center text-center">
+            <p className="text-lg text-ink mb-6">Create a listing and start getting booked.</p>
+            <Link
+              href="/provider/listings/new"
+              className="inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-semibold text-white hover:bg-coral-hover transition-colors"
+            >
+              <Plus size={18} /> Create listing
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="max-w-md rounded-2xl border border-black/10 bg-white overflow-hidden">
