@@ -2,6 +2,8 @@
 
 Next.js app for browsing event service providers, comparing packages, planning events, and managing bookings. Uses the separate [Occasions API](https://github.com/Mdluli-HIM/Occasions-mvp-back-end).
 
+Beta site: [occasions-mvp-front-end.vercel.app](https://occasions-mvp-front-end.vercel.app). Its backend is [occasions-mvp-api.onrender.com](https://occasions-mvp-api.onrender.com/api/health).
+
 ## Local development
 
 Use Node.js 22.

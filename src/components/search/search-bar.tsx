@@ -37,7 +37,7 @@ export function SearchBar({ showEventPlanner = false, showBudget = false }: { sh
   const activeFilterCount = (minPrice || maxPrice ? 1 : 0) + (pricingType ? 1 : 0) + (unitLabel ? 1 : 0);
 
   return (
-    <div className="space-y-3">
+    <div className="sticky top-0 z-30 space-y-3 bg-offwhite">
       <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-2 py-2 shadow-sm w-fit mx-auto">
         <SelectDropdown
           placeholder="All Limpopo areas"
