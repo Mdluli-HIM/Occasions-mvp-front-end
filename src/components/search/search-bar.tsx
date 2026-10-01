@@ -6,9 +6,11 @@ import { LIMPOPO_AREAS, SERVICES } from "@/lib/taxonomy";
 import { SelectDropdown } from "@/components/ui/select-dropdown";
 import { MultiSelectDropdown } from "@/components/ui/multi-select-dropdown";
 import { FiltersModal } from "@/components/search/filters-modal";
+import { BudgetButton } from "@/components/search/budget-button";
+import { PlanEventButton } from "@/components/events/plan-event-button";
 import { Search, SlidersHorizontal } from "lucide-react";
 
-export function SearchBar() {
+export function SearchBar({ showEventPlanner = false, showBudget = false }: { showEventPlanner?: boolean; showBudget?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -17,6 +19,9 @@ export function SearchBar() {
   const services = params.get("services")?.split(",").filter(Boolean) ?? [];
   const minPrice = params.get("minPrice") ?? "";
   const maxPrice = params.get("maxPrice") ?? "";
+  const pricingType = params.get("pricingType") ?? (minPrice || maxPrice ? "per_guest" : "");
+  const unitLabel = params.get("unitLabel") ?? "";
+  const applyPricing = (min: string, max: string, type: string, unit: string, selectedArea: string, selectedServices: string[]) => updateParams({ minPrice: min, maxPrice: max, pricingType: type, unitLabel: unit, area: selectedArea, services: selectedServices.join(",") });
 
   function updateParams(updates: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
@@ -29,7 +34,7 @@ export function SearchBar() {
 
   const areaOptions = LIMPOPO_AREAS.map((a) => ({ value: a, label: a }));
   const serviceOptions = SERVICES.map((s) => ({ value: s.slug, label: s.label }));
-  const activeFilterCount = (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
+  const activeFilterCount = (minPrice || maxPrice ? 1 : 0) + (pricingType ? 1 : 0) + (unitLabel ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -60,8 +65,10 @@ export function SearchBar() {
         </button>
       </div>
 
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <button
+          aria-haspopup="dialog"
+          aria-expanded={filtersOpen}
           onClick={() => setFiltersOpen(true)}
           className="flex items-center gap-2 rounded-full border border-black/15 bg-white px-4 py-2 text-sm font-medium text-ink hover:border-ink transition-colors duration-150"
         >
@@ -73,6 +80,8 @@ export function SearchBar() {
             </span>
           )}
         </button>
+        {showBudget && <BudgetButton minPrice={minPrice} maxPrice={maxPrice} pricingType={pricingType} unitLabel={unitLabel} area={area} services={services} onApply={applyPricing} />}
+        {showEventPlanner && <PlanEventButton />}
       </div>
 
       <FiltersModal
@@ -80,7 +89,11 @@ export function SearchBar() {
         onClose={() => setFiltersOpen(false)}
         minPrice={minPrice}
         maxPrice={maxPrice}
-        onApply={(min, max) => updateParams({ minPrice: min, maxPrice: max })}
+        pricingType={pricingType}
+        unitLabel={unitLabel}
+        area={area}
+        services={services}
+        onApply={applyPricing}
       />
     </div>
   );

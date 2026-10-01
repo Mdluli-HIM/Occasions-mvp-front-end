@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth-store";
 import { useModeStore } from "@/lib/mode-store";
+import { useAuthHydrated } from "@/lib/use-auth-hydrated";
 
 // Everything under /provider needs a logged-in user. Logged-out visitors go to
 // /login and come back here afterwards. Visiting these URLs directly also puts
@@ -13,17 +14,15 @@ export default function ProviderLayout({ children }: { children: React.ReactNode
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const setMode = useModeStore((s) => s.setMode);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => setMounted(true), []);
+  const hydrated = useAuthHydrated();
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!hydrated) return;
     if (!user) router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
     else setMode("providing");
-  }, [mounted, user, router, pathname, setMode]);
+  }, [hydrated, user, router, pathname, setMode]);
 
-  if (!mounted || !user) return null;
+  if (!hydrated || !user) return null;
 
   return <main className="max-w-7xl mx-auto w-full px-6 py-10">{children}</main>;
 }

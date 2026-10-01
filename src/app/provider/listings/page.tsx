@@ -60,8 +60,8 @@ export default function ListingsPage() {
             {[
               {
                 src: "/images/provider-onboarding/about-business.png",
-                title: "Tell us about your business",
-                body: "Share what you offer, where you serve, and how customers can reach you.",
+                title: "Introduce yourself or your company",
+                body: "Create your provider profile, then share what you offer and where you work.",
               },
               {
                 src: "/images/provider-onboarding/preview-listing.png",
@@ -134,12 +134,18 @@ export default function ListingsPage() {
               {listing.packages.length === 1 ? "package" : "packages"} · {listing.media.length}{" "}
               {listing.media.length === 1 ? "photo" : "photos"}
             </p>
+            <Link
+              href="/provider/listings/edit?step=1"
+              className="mt-4 inline-block text-sm font-medium text-coral underline underline-offset-4"
+            >
+              Edit provider profile
+            </Link>
             {listing.status === "draft" && (
               <p className="mt-3 text-xs text-black/50">
                 {listing.packages.length === 0 ? (
                   <>
                     Add at least one package to publish.{" "}
-                    <Link href="/provider/listings/edit?step=4" className="font-medium text-coral">
+                    <Link href="/provider/listings/edit?step=5" className="font-medium text-coral">
                       Add a package
                     </Link>
                   </>

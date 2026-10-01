@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { bookingPricingDescription } from "@/lib/pricing";
 import { clsx } from "clsx";
+import { useAuthStore } from "@/lib/auth-store";
+import { useAuthHydrated } from "@/lib/use-auth-hydrated";
+import { getEventTypeLabel } from "@/lib/event-types";
 import { CalendarDays, Mail, MessageCircle, Phone, Users } from "lucide-react";
 import {
   ApiError,
@@ -18,6 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "Pending", label: "Pending" },
   { key: "Confirmed", label: "Confirmed" },
   { key: "Cancelled", label: "Cancelled" },
+  { key: "Completed", label: "Completed" },
   { key: "all", label: "All" },
 ];
 
@@ -25,6 +30,7 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
   Pending: "bg-amber-100 text-amber-800",
   Confirmed: "bg-green-100 text-green-800",
   Cancelled: "bg-black/5 text-black/55",
+  Completed: "bg-blue-100 text-blue-800",
 };
 
 const rand = (n: number) => `R${n.toLocaleString("en-ZA")}`;
@@ -44,25 +50,37 @@ function whatsappLink(phone: string) {
 }
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<ProviderBooking[] | null>(null);
-  const [noListing, setNoListing] = useState(false);
+  const { token, user } = useAuthStore();
+  const hydrated = useAuthHydrated();
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{ key: string; bookings?: ProviderBooking[]; error?: string; noListing?: boolean } | null>(null);
   const [tab, setTab] = useState<Tab>("Pending");
-  const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<{ key: string; message: string } | null>(null);
+  const [busyState, setBusyState] = useState<{ key: string; id: string } | null>(null);
+  const key = JSON.stringify([token, user?.id, attempt]);
+  const current = hydrated && token && user && result?.key === key ? result : null;
+  const bookings = current?.bookings ?? null;
+  const noListing = current?.noListing ?? false;
+  const error = current?.error || (mutationError?.key === key ? mutationError.message : "");
+  const busyId = busyState?.key === key ? busyState.id : null;
 
   useEffect(() => {
-    getMyBookings()
-      .then(setBookings)
-      .catch((e) => {
-        if (e instanceof ApiError && e.status === 404) setNoListing(true);
-        else setError(e instanceof Error ? e.message : "Could not load bookings");
-      });
-  }, []);
+    if (!hydrated || !token || !user) return;
+    const controller = new AbortController();
+    let ignore = false;
+    const currentAuth = () => !ignore && !controller.signal.aborted && useAuthStore.getState().token === token && useAuthStore.getState().user?.id === user.id;
+    getMyBookings({}, controller.signal).then((loaded) => { if (currentAuth()) setResult({ key, bookings: loaded }); }).catch((error) => {
+      if (!currentAuth()) return;
+      if (error instanceof ApiError && error.status === 404) setResult({ key, noListing: true });
+      else setResult({ key, error: error instanceof ApiError ? error.message : "Could not load bookings. Please try again." });
+    });
+    return () => { ignore = true; controller.abort(); };
+  }, [hydrated, token, user, key]);
 
-  const today = new Date().toLocaleDateString("en-CA"); // local YYYY-MM-DD
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Johannesburg", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 
   const counts = useMemo(() => {
-    const c: Record<Tab, number> = { all: 0, Pending: 0, Confirmed: 0, Cancelled: 0 };
+    const c: Record<Tab, number> = { all: 0, Pending: 0, Confirmed: 0, Cancelled: 0, Completed: 0 };
     for (const b of bookings ?? []) {
       c.all++;
       c[b.status]++;
@@ -75,22 +93,24 @@ export default function BookingsPage() {
     [bookings, tab]
   );
 
-  async function changeStatus(booking: ProviderBooking, status: "Confirmed" | "Cancelled") {
+  async function changeStatus(booking: ProviderBooking, status: "Confirmed" | "Cancelled" | "Completed") {
+    if (busyId || !token || !user) return;
     if (status === "Cancelled") {
       const verb = booking.status === "Pending" ? "Decline" : "Cancel";
       if (!window.confirm(`${verb} the booking from ${booking.guestName}? This can't be undone.`)) return;
     }
-    setBusyId(booking.id);
-    setError("");
+    if (status === "Completed" && !window.confirm(`Mark the service for ${booking.guestName} as completed?`)) return;
+    setBusyState({ key, id: booking.id });
+    setMutationError({ key, message: "" });
+    const currentAuth = () => useAuthStore.getState().token === token && useAuthStore.getState().user?.id === user.id;
     try {
       const updated = await updateBookingStatus(booking.id, status);
-      setBookings((prev) =>
-        (prev ?? []).map((b) => (b.id === booking.id ? { ...b, status: updated.status } : b))
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not update the booking");
+      if (!currentAuth()) return;
+      setResult((previous) => previous?.key === key ? { ...previous, bookings: previous.bookings?.map((item) => item.id === booking.id ? { ...item, status: updated.status } : item) } : previous);
+    } catch (error) {
+      if (currentAuth()) setMutationError({ key, message: error instanceof ApiError ? error.message : "Could not update the booking. Please try again." });
     } finally {
-      setBusyId(null);
+      if (currentAuth()) setBusyState(null);
     }
   }
 
@@ -130,11 +150,11 @@ export default function BookingsPage() {
         ))}
       </div>
 
-      {error && <p className="mb-6 rounded-xl bg-coral-soft px-4 py-3 text-sm text-coral">{error}</p>}
+      {error && <div className="mb-6 rounded-xl bg-coral-soft px-4 py-3 text-sm text-coral"><p role="alert">{error}</p>{!bookings && <button type="button" className="mt-2 font-semibold" onClick={() => setAttempt((n) => n + 1)}>Try again</button>}</div>}
 
       {!bookings && !error ? (
         <p className="text-black/50">Loading bookings…</p>
-      ) : visible.length === 0 ? (
+      ) : !bookings ? null : visible.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-black/20 bg-white px-4 py-14 text-center text-sm text-black/50">
           {tab === "all" ? "No bookings yet." : `No ${tab.toLowerCase()} bookings.`}
         </p>
@@ -158,6 +178,8 @@ export default function BookingsPage() {
                   </span>
                 </div>
 
+                <p className="mt-3 text-sm text-ink/70">{bookingPricingDescription(b)}</p>
+                {b.event && <div className="mt-4 rounded-xl bg-coral-soft p-4 text-sm text-ink space-y-1"><p className="font-semibold">Event: {b.event.title}</p><p>{getEventTypeLabel(b.event.eventType, b.event.customEventType)} · {b.event.area}</p><p>{formatDate(b.event.eventDate)} · {b.event.startTime} · {b.event.guests} guests</p>{b.event.notes && <p className="whitespace-pre-wrap text-ink/70">{b.event.notes}</p>}</div>}
                 <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink">
                   <span className="flex items-center gap-2">
                     <CalendarDays size={16} className="text-black/40" />
@@ -166,7 +188,7 @@ export default function BookingsPage() {
                   </span>
                   <span className="flex items-center gap-2">
                     <Users size={16} className="text-black/40" />
-                    {b.guests} {b.guests === 1 ? "guest" : "guests"}
+                    {b.guests} event {b.guests === 1 ? "attendee" : "attendees"}
                   </span>
                 </div>
 
@@ -184,20 +206,21 @@ export default function BookingsPage() {
                   </a>
                 </div>
 
-                {b.status !== "Cancelled" && (
+                {(b.status === "Pending" || b.status === "Confirmed") && (
                   <div className="mt-5 flex gap-3">
                     {b.status === "Pending" && (
                       <button
                         onClick={() => changeStatus(b, "Confirmed")}
-                        disabled={busy}
+                        disabled={busyId !== null}
                         className="rounded-full bg-coral px-5 py-2.5 text-sm font-semibold text-white hover:bg-coral-hover transition-colors disabled:opacity-50"
                       >
                         {busy ? "Saving…" : "Confirm"}
                       </button>
                     )}
+                    {b.status === "Confirmed" && b.eventDate <= today && <button onClick={() => changeStatus(b, "Completed")} disabled={busyId !== null} className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-black/80 disabled:opacity-50">{busy ? "Saving…" : "Mark completed"}</button>}
                     <button
                       onClick={() => changeStatus(b, "Cancelled")}
-                      disabled={busy}
+                      disabled={busyId !== null}
                       className="rounded-full border border-black/15 px-5 py-2.5 text-sm font-medium text-ink hover:border-ink transition-colors disabled:opacity-50"
                     >
                       {b.status === "Pending" ? "Decline" : "Cancel booking"}

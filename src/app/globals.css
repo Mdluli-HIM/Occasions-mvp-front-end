@@ -14,3 +14,35 @@ body {
   background-color: #F6F6F4;
   color: #111111;
 }
+
+/* Shared area and service dropdown interaction. */
+.occasions-dropdown-option {
+  background-color: #FFFFFF;
+  color: var(--color-ink);
+  transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .occasions-dropdown-option:hover {
+    background-color: var(--color-ink);
+    color: #FFFFFF;
+    transform: translateX(3px);
+  }
+}
+
+.occasions-dropdown-option:focus-visible {
+  background-color: var(--color-ink);
+  color: #FFFFFF;
+  outline: 2px solid var(--color-coral);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .occasions-dropdown-option {
+    transition: none;
+  }
+
+  .occasions-dropdown-option:hover {
+    transform: none;
+  }
+}

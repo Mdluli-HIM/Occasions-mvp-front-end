@@ -22,7 +22,13 @@ export const SERVICES = [
   { slug: "chairs-tables", label: "Chairs & Tables" },
   { slug: "mobile-toilets", label: "Mobile Toilets" },
   { slug: "mobile-fridges", label: "Mobile Fridges" },
+  { slug: "other", label: "Other" },
 ] as const;
 
 export type LimpopoArea = (typeof LIMPOPO_AREAS)[number];
 export type ServiceSlug = (typeof SERVICES)[number]["slug"];
+
+export function getServiceLabel(serviceSlug: string, category?: string): string {
+  if (serviceSlug === "other") return category?.trim() || "Other";
+  return SERVICES.find((s) => s.slug === serviceSlug)?.label ?? category ?? "Other";
+}

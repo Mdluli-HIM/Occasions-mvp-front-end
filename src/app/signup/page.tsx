@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signup } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
+  );
+}
+
+function SignupForm() {
   const router = useRouter();
   const params = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -30,7 +39,7 @@ export default function SignupPage() {
       });
       setAuth(token, user);
       router.push(
-        params.get("redirect") ?? (role === "provider" ? "/provider-onboarding" : "/")
+        safeRedirect(params.get("redirect"), role === "provider" ? "/provider/listings/new" : "/")
       );
     } catch (err) {
       setStatus("error");
@@ -45,7 +54,7 @@ export default function SignupPage() {
           <p className="text-2xl font-extrabold text-coral">Occasions</p>
           <h1 className="text-2xl font-bold text-ink mt-4">Create an account</h1>
           <p className="text-ink/60 text-sm mt-1">
-            Sign up as a customer to save providers, or as a provider to list your
+            Create an account to plan events and book services, or list your
             business.
           </p>
         </div>
@@ -139,7 +148,7 @@ export default function SignupPage() {
 
         <p className="text-sm text-ink/60 text-center">
           Already have an account?{" "}
-          <Link href="/login" className="text-coral font-medium">
+          <Link href={params.get("redirect") ? `/login?redirect=${encodeURIComponent(safeRedirect(params.get("redirect")))}` : "/login"} className="text-coral font-medium">
             Log in
           </Link>
         </p>

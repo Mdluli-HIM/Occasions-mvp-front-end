@@ -4,27 +4,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { clsx } from "clsx";
 import type { Provider } from "@/lib/api";
-import { SERVICES } from "@/lib/taxonomy";
+import { getServiceLabel } from "@/lib/taxonomy";
 import { addRecentlyViewed } from "@/lib/recently-viewed";
+import { providerPriceLabel } from "@/lib/pricing";
 
 export function ProviderCard({
   provider: p,
   className,
   sizes = "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw",
   priority = false,
+  eventId,
 }: {
   provider: Provider;
   className?: string;
   sizes?: string;
   priority?: boolean;
+  eventId?: string;
 }) {
-  const serviceLabel = SERVICES.find((s) => s.slug === p.serviceSlug)?.label ?? p.category;
+  const serviceLabel = getServiceLabel(p.serviceSlug, p.category);
   const photo = p.media[0]?.url ?? "/next.svg";
-  const cheapest = p.packages?.[0];
+  const priceLabels = providerPriceLabel(p.packages ?? []);
 
   return (
     <Link
-      href={`/providers/${p.slug}`}
+      href={`/providers/${p.slug}${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ""}`}
       onClick={() => addRecentlyViewed(p.slug)}
       className={clsx("group block", className)}
     >
@@ -44,12 +47,9 @@ export function ProviderCard({
       <div className="mt-2 space-y-0.5">
         <p className="font-medium text-sm text-ink">{p.name}</p>
         <p className="text-gray-500 text-sm">{serviceLabel}</p>
-        {cheapest && (
-          <p className="text-sm">
-            From{" "}
-            <span className="font-medium">R{cheapest.priceValue.toLocaleString("en-ZA")}</span> / guest
-          </p>
-        )}
+        {priceLabels.map((label) => (
+          <p key={label} className="text-sm text-ink">{label}</p>
+        ))}
       </div>
     </Link>
   );

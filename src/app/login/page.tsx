@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { login } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -25,7 +34,7 @@ export default function LoginPage() {
         password: String(form.get("password")),
       });
       setAuth(token, user);
-      router.push(params.get("redirect") ?? "/");
+      router.push(safeRedirect(params.get("redirect")));
     } catch (err) {
       setStatus("error");
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong");
@@ -39,7 +48,7 @@ export default function LoginPage() {
           <p className="text-2xl font-extrabold text-coral">Occasions</p>
           <h1 className="text-2xl font-bold text-ink mt-4">Log in</h1>
           <p className="text-ink/60 text-sm mt-1">
-            Log in to manage your listing or your saved providers.
+            Log in to plan your events, view bookings or manage your listing.
           </p>
         </div>
 
@@ -82,7 +91,7 @@ export default function LoginPage() {
 
         <p className="text-sm text-ink/60 text-center">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-coral font-medium">
+          <Link href={params.get("redirect") ? `/signup?redirect=${encodeURIComponent(safeRedirect(params.get("redirect")))}` : "/signup"} className="text-coral font-medium">
             Sign up
           </Link>
         </p>

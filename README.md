@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Occasions MVP frontend
 
-## Getting Started
+Next.js app for browsing event service providers, comparing packages, planning events, and managing bookings. Uses the separate [Occasions API](https://github.com/Mdluli-HIM/Occasions-mvp-back-end).
 
-First, run the development server:
+## Local development
+
+Use Node.js 22.
 
 ```bash
+npm ci
+cp .env.local.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The frontend runs on http://localhost:3000 and expects the local API on port 4000. The only required frontend environment variable is `NEXT_PUBLIC_API_URL`. It is public, embedded in the browser bundle at build time, and must point to an HTTPS backend origin when deployed. It must not include `/api` or a trailing slash. Authentication uses API-issued bearer tokens; database URLs and the backend signing secret must never be added to the frontend.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Validation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+GitHub Actions runs these checks on pushes and pull requests with a placeholder API URL, without database credentials.
 
-To learn more about Next.js, take a look at the following resources:
+## Vercel beta deployment
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Import [Mdluli-HIM/Occasions-mvp-front-end](https://github.com/Mdluli-HIM/Occasions-mvp-front-end) in Vercel.
+2. Use framework **Next.js**, root directory **./**, install command `npm ci`, build command `npm run build`, and the default Next.js output directory. Node.js 22 is declared in `package.json`.
+3. Set `NEXT_PUBLIC_API_URL` to the HTTPS origin assigned to the backend Render service, in both Production and Preview environments where you will test.
+4. Deploy `main`. Changing the API environment variable requires a new frontend build.
+5. Copy the actual frontend origin (for example `https://your-project.vercel.app`) into the backend's `CORS_ORIGIN` environment variable. Use exact origins; add individual preview origins explicitly when needed.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [Vercel Git deployments](https://vercel.com/docs/git) and [environment variables](https://vercel.com/docs/environment-variables).
 
-## Deploy on Vercel
+Use the generated HTTPS link on phones, tablets, and other computers. A GitHub push alone does not create a working live site: both the backend and frontend must be deployed, the database schema must match, and the API/CORS origins must point to each other.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Before inviting testers, check browsing and budget filters, signup/login, provider listing/package edits, image uploads, event planning, cart checkout, and customer/provider booking access. Use test event details. The Render Free backend can take about a minute to wake up after 15 minutes idle. Its local uploaded photos are temporary and can disappear on restarts or idle shutdown; use durable object storage before relying on provider uploads. [Render Free limitations](https://render.com/docs/free).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Do not commit `.env.local`, tokens, local uploads, dependency folders, or generated build output. The separate backend repository contains the database migration instructions and the Render Blueprint.

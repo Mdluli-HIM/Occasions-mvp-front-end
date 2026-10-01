@@ -20,9 +20,14 @@ export function MultiSelectDropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<string[]>(selected);
+  const selectionKey = JSON.stringify(selected);
+  const [previousSelectionKey, setPreviousSelectionKey] = useState(selectionKey);
   const ref = useRef<HTMLDivElement>(null);
 
-  useEffect(() => setDraft(selected), [selected]);
+  if (selectionKey !== previousSelectionKey) {
+    setPreviousSelectionKey(selectionKey);
+    setDraft(selected);
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -58,7 +63,7 @@ export function MultiSelectDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium text-ink hover:bg-black/5 transition-colors duration-150"
+        className="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium text-ink hover:bg-black/5 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral"
       >
         {displayText}
         <ChevronDown size={14} className="text-ink/50" />
@@ -70,32 +75,34 @@ export function MultiSelectDropdown({
             {label} · Select multiple
           </p>
 
-          <button
-            type="button"
-            onClick={() => setDraft([])}
-            className={`group w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-1 text-sm font-medium transition-all duration-150 ease-out hover:bg-ink hover:text-white hover:translate-x-1 ${
-              draft.length === 0 ? "bg-ink text-white" : "text-ink"
-            }`}
-          >
-            <span>Any {label.toLowerCase()}</span>
-            {draft.length === 0 && (
-              <Check size={14} className="text-coral group-hover:text-white" />
-            )}
-          </button>
+          <div className="pr-1">
+            <button
+              type="button"
+              aria-pressed={draft.length === 0}
+              onClick={() => setDraft([])}
+              className="occasions-dropdown-option flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm mb-1 font-medium"
+            >
+              <span>Any {label.toLowerCase()}</span>
+              {draft.length === 0 && (
+                <Check size={14} className="shrink-0 text-coral" />
+              )}
+            </button>
+          </div>
 
-          <div className="max-h-64 overflow-y-auto">
+          <div className="max-h-64 overflow-y-auto overflow-x-hidden pr-1">
             {options.map((opt) => {
               const checked = draft.includes(opt.value);
               return (
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={checked}
                   onClick={() => toggle(opt.value)}
-                  className="group w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-sm text-ink transition-all duration-150 ease-out hover:bg-ink hover:text-white hover:translate-x-1"
+                  className="occasions-dropdown-option flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm"
                 >
                   <span>{opt.label}</span>
                   {checked && (
-                    <Check size={14} className="text-coral group-hover:text-white" />
+                    <Check size={14} className="shrink-0 text-coral" />
                   )}
                 </button>
               );
@@ -117,7 +124,7 @@ export function MultiSelectDropdown({
 
 function Check({ size, className }: { size: number; className?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" className={className} fill="none">
+    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 12 12" className={className} fill="none">
       <path
         d="M2 6.2 4.6 9 10 3"
         stroke="currentColor"

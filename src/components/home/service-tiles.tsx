@@ -1,36 +1,54 @@
 import Image from "next/image";
 import Link from "next/link";
-import { SERVICES } from "@/lib/taxonomy";
+import { Armchair, Camera, Flower2, Music, Snowflake, Sparkles, Tent, Toilet, Utensils } from "lucide-react";
+import { SERVICES, type ServiceSlug } from "@/lib/taxonomy";
+import { getCategoryImages } from "@/lib/category-images";
 import { ScrollRow } from "@/components/home/scroll-row";
 
-const TILE_IMAGES: Record<string, string> = {
-  catering: "/images/services/catering.jpg",
-  tents: "/images/services/tents.jpg",
-  decor: "/images/services/decor.jpg",
-  "sound-dj": "/images/services/sound.jpg",
-  photography: "/images/services/photography.jpg",
-  "chairs-tables": "/images/services/chairs.jpg",
-  "mobile-toilets": "/images/services/toilets.jpg",
-  "mobile-fridges": "/images/services/fridges.jpg",
-};
+const FALLBACK_ICONS = {
+  catering: Utensils,
+  tents: Tent,
+  decor: Flower2,
+  "sound-dj": Music,
+  photography: Camera,
+  "chairs-tables": Armchair,
+  "mobile-toilets": Toilet,
+  "mobile-fridges": Snowflake,
+  other: Sparkles,
+} satisfies Record<ServiceSlug, typeof Sparkles>;
 
-export function ServiceTiles() {
+export async function ServiceTiles() {
+  const images = await getCategoryImages();
   return (
     <ScrollRow title="Services in Limpopo">
-      {SERVICES.map((s) => (
-        <Link key={s.slug} href={`/search?services=${s.slug}`} className="group w-[160px] shrink-0 snap-start">
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-offwhite">
-            <Image
-              src={TILE_IMAGES[s.slug] ?? "/next.svg"}
-              alt=""
-              fill
-              sizes="160px"
-              className="object-cover group-hover:scale-105 transition-transform"
-            />
-          </div>
-          <p className="mt-2 text-sm font-medium text-ink">{s.label}</p>
-        </Link>
-      ))}
+      {SERVICES.map((service) => {
+        const image = images[service.slug];
+        const Icon = FALLBACK_ICONS[service.slug];
+        return (
+          <Link
+            key={service.slug}
+            href={`/search?services=${service.slug}`}
+            className="group flex w-[120px] shrink-0 snap-start flex-col items-center rounded-xl px-1 py-2 text-center outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2 sm:w-[136px]"
+          >
+            <div className="relative flex h-28 w-28 items-center justify-center sm:h-32 sm:w-32">
+              {image ? (
+                <Image
+                  src={image}
+                  alt=""
+                  fill
+                  sizes="(min-width: 640px) 128px, 112px"
+                  className="object-contain transition-transform duration-200 motion-safe:group-hover:scale-105"
+                />
+              ) : (
+                <Icon size={56} strokeWidth={1.4} className="text-ink/65" aria-hidden="true" />
+              )}
+            </div>
+            <span className="mt-3 flex min-h-10 items-center justify-center text-sm font-medium leading-5 text-ink transition-colors group-hover:text-coral">
+              {service.label}
+            </span>
+          </Link>
+        );
+      })}
     </ScrollRow>
   );
 }

@@ -7,5 +7,5 @@ export default async function EditListingPage({
 }) {
   const { step } = await searchParams;
   const parsed = Number(step);
-  return <ListingForm mode="edit" initialStep={Number.isInteger(parsed) ? parsed : 0} />;
+  return <ListingForm mode="edit" initialStep={Number.isInteger(parsed) ? Math.min(Math.max(parsed, 0), 5) : 0} />;
 }

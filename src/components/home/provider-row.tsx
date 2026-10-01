@@ -7,11 +7,13 @@ export function ProviderRow({
   titleHref,
   providers,
   priority = false,
+  eventId,
 }: {
   title: string;
   titleHref?: string;
   providers: Provider[];
   priority?: boolean;
+  eventId?: string;
 }) {
   return (
     <ScrollRow title={title} titleHref={titleHref}>
@@ -21,6 +23,7 @@ export function ProviderRow({
           provider={p}
           sizes="230px"
           priority={priority && i < 4}
+          eventId={eventId}
           className="w-[230px] shrink-0 snap-start"
         />
       ))}

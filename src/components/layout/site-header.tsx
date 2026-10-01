@@ -8,6 +8,11 @@ import { useAuthStore } from "@/lib/auth-store";
 import { useModeStore } from "@/lib/mode-store";
 import { clsx } from "clsx";
 
+const PLANNING_LINKS = [
+  { href: "/events/new", label: "Plan an event" },
+  { href: "/events", label: "My events" },
+];
+
 const PROVIDER_LINKS = [
   { href: "/provider/listings", label: "Listings" },
   { href: "/provider/bookings", label: "Bookings" },
@@ -34,20 +39,19 @@ export function SiteHeader() {
 
   return (
     <header className="border-b border-black/10 bg-white">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
-        <Link href="/" className="text-2xl font-extrabold text-coral">
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-3 gap-y-3 px-4 py-4 sm:flex-nowrap sm:gap-6 sm:px-6">
+        <Link href="/" className="shrink-0 text-xl font-extrabold text-coral sm:text-2xl">
           Occasions
         </Link>
 
-        {providing && (
-          <nav className="flex items-center gap-6">
-            {PROVIDER_LINKS.map((link) => (
+        <nav aria-label={providing ? "Provider navigation" : "Planning navigation"} className="order-last flex w-full items-center gap-6 border-t border-black/5 pt-3 sm:order-none sm:w-auto sm:border-0 sm:pt-0">
+            {(providing ? PROVIDER_LINKS : PLANNING_LINKS).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 className={clsx(
                   "text-sm font-medium pb-1 border-b-2 transition-colors",
-                  pathname.startsWith(link.href)
+                  (link.href === "/events" ? pathname.startsWith("/events") && pathname !== "/events/new" : pathname.startsWith(link.href))
                     ? "border-ink text-ink"
                     : "border-transparent text-black/60 hover:text-ink"
                 )}
@@ -55,12 +59,11 @@ export function SiteHeader() {
                 {link.label}
               </Link>
             ))}
-          </nav>
-        )}
+        </nav>
 
-        <div className="flex items-center gap-5">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-3 sm:flex-initial sm:gap-5">
           {!providing && (
-            <Link href="/cart" className="relative text-ink hover:text-coral transition-colors">
+            <Link href="/cart" aria-label="Your cart" className="relative shrink-0 text-ink hover:text-coral transition-colors">
               <ShoppingBag size={22} />
               {count > 0 && (
                 <span className="absolute -top-2 -right-2 bg-coral text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
@@ -73,7 +76,7 @@ export function SiteHeader() {
           {user && (
             <button
               onClick={switchMode}
-              className="text-sm font-medium text-ink hover:text-coral transition-colors"
+              className="shrink-0 whitespace-nowrap text-xs font-medium text-ink transition-colors hover:text-coral sm:text-sm"
             >
               {providing ? "Switch to planning" : "Switch to providing"}
             </button>
@@ -82,12 +85,12 @@ export function SiteHeader() {
           {user ? (
             <Link
               href="/profile"
-              className="flex items-center gap-2 text-sm font-medium text-ink hover:text-coral transition-colors"
+              className="flex min-w-0 items-center gap-2 text-sm font-medium text-ink transition-colors hover:text-coral"
             >
-              <span className="h-7 w-7 rounded-full bg-coral-soft text-coral flex items-center justify-center text-xs font-semibold">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-coral-soft text-xs font-semibold text-coral">
                 {user.name.charAt(0).toUpperCase()}
               </span>
-              {user.name.split(" ")[0]}
+              <span className="max-w-16 truncate sm:max-w-32">{user.name.split(" ")[0]}</span>
             </Link>
           ) : (
             <Link

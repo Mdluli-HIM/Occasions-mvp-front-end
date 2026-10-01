@@ -2,32 +2,38 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { fetchProvider } from "@/lib/api";
 import { PackageList } from "@/components/providers/package-list";
-import { SERVICES } from "@/lib/taxonomy";
+import { ProviderGallery } from "@/components/providers/provider-gallery";
+import { ProviderProfileCard } from "@/components/providers/provider-profile-card";
+import { getServiceLabel } from "@/lib/taxonomy";
+import { providerPriceLabel } from "@/lib/pricing";
 import { Star, Users, Accessibility, CalendarX } from "lucide-react";
 
 export default async function ProviderPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ eventId?: string }>;
 }) {
   const { slug } = await params;
+  const { eventId } = await searchParams;
   const provider = await fetchProvider(slug);
 
   if (!provider) notFound();
 
-  const serviceLabel =
-    SERVICES.find((s) => s.slug === provider.serviceSlug)?.label ?? provider.category;
-  const heroPhoto = provider.media[0]?.url ?? "/next.svg";
-  const galleryPhotos = provider.media.slice(1);
-  const cheapest = [...provider.packages].sort((a, b) => a.priceValue - b.priceValue)[0];
+  const serviceLabel = getServiceLabel(provider.serviceSlug, provider.category);
+  const priceLabels = providerPriceLabel(provider.packages);
 
   return (
-    <main className="max-w-5xl mx-auto px-6 py-10 space-y-10">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-        <div className="md:col-span-2 space-y-6">
-          <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-black/5">
-            <Image src={heroPhoto} alt={provider.name} fill className="object-cover" />
-          </div>
+    <main className="w-full max-w-6xl mx-auto px-5 sm:px-6 py-8 sm:py-10 space-y-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-8 lg:gap-10 items-start">
+        <div className="min-w-0 space-y-6">
+          <section aria-labelledby="provider-portfolio-title" className="space-y-4">
+            <h2 id="provider-portfolio-title" className="text-xl sm:text-2xl font-semibold text-ink">
+              My portfolio
+            </h2>
+            <ProviderGallery photos={provider.media} alt={provider.name} />
+          </section>
 
           <div>
             <p className="text-sm font-medium text-coral">{serviceLabel}</p>
@@ -62,22 +68,23 @@ export default async function ProviderPage({
           )}
         </div>
 
-        {cheapest && (
-          <div className="rounded-2xl border border-black/10 bg-white p-6 h-fit space-y-1">
-            <p className="text-sm text-ink/60">From</p>
-            <p className="text-xl font-semibold text-ink">
-              R {cheapest.priceValue.toLocaleString("en-ZA")} ZAR
-              <span className="text-sm font-normal text-ink/60"> / guest</span>
-            </p>
-          </div>
-        )}
+        <aside className="w-full space-y-5 lg:sticky lg:top-6" aria-label="Provider information">
+          {priceLabels.length > 0 && (
+            <div className="rounded-3xl border border-black/10 bg-white p-6 space-y-2">
+              {priceLabels.map((label) => (
+                <p key={label} className="text-lg font-semibold text-ink">{label}</p>
+              ))}
+            </div>
+          )}
+          <ProviderProfileCard provider={provider} serviceLabel={serviceLabel} />
+        </aside>
       </div>
 
-      <div className="border-t border-black/10 pt-8">
+      <div id="services" className="scroll-mt-6 border-t border-black/10 pt-8">
         <h2 className="text-lg font-semibold text-ink mb-4">
           {serviceLabel} services
         </h2>
-        <PackageList provider={provider} packages={provider.packages} />
+        <PackageList provider={provider} packages={provider.packages} eventId={eventId} />
       </div>
 
       {provider.qualifications.length > 0 && (
@@ -92,6 +99,7 @@ export default async function ProviderPage({
                     alt={provider.name}
                     fill
                     className="object-cover"
+                    unoptimized={provider.media[0].url.startsWith("http")}
                   />
                 )}
               </div>
@@ -104,27 +112,6 @@ export default async function ProviderPage({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {galleryPhotos.length > 0 && (
-        <div className="border-t border-black/10 pt-8">
-          <h2 className="text-lg font-semibold text-ink mb-4">My portfolio</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {galleryPhotos.map((photo) => (
-              <div
-                key={photo.id}
-                className="relative aspect-square overflow-hidden rounded-2xl bg-black/5"
-              >
-                <Image
-                  src={photo.url}
-                  alt={provider.name}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ))}
           </div>
         </div>
       )}
