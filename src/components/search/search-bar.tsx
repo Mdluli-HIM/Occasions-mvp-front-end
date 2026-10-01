@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LIMPOPO_AREAS, SERVICES } from "@/lib/taxonomy";
-import { SelectDropdown } from "@/components/ui/select-dropdown";
+import { SERVICES } from "@/lib/taxonomy";
+import { LocationDropdown } from "@/components/search/location-dropdown";
+import { useLocationCoverage } from "@/components/locations/use-location-coverage";
 import { MultiSelectDropdown } from "@/components/ui/multi-select-dropdown";
 import { FiltersModal } from "@/components/search/filters-modal";
 import { BudgetButton } from "@/components/search/budget-button";
@@ -14,14 +15,17 @@ export function SearchBar({ showEventPlanner = false, showBudget = false }: { sh
   const router = useRouter();
   const params = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const locationState = useLocationCoverage();
 
   const area = params.get("area") ?? "";
+  const province = params.get("province") ?? "";
   const services = params.get("services")?.split(",").filter(Boolean) ?? [];
   const minPrice = params.get("minPrice") ?? "";
   const maxPrice = params.get("maxPrice") ?? "";
   const pricingType = params.get("pricingType") ?? (minPrice || maxPrice ? "per_guest" : "");
   const unitLabel = params.get("unitLabel") ?? "";
-  const applyPricing = (min: string, max: string, type: string, unit: string, selectedArea: string, selectedServices: string[]) => updateParams({ minPrice: min, maxPrice: max, pricingType: type, unitLabel: unit, area: selectedArea, services: selectedServices.join(",") });
+  const applyPricing = (min: string, max: string, type: string, unit: string, selectedArea: string, selectedServices: string[], selectedProvince: string) => updateParams({ minPrice: min, maxPrice: max, pricingType: type, unitLabel: unit, province: selectedProvince, area: selectedArea, services: selectedServices.join(",") });
+  const coverageProps = { coverage: locationState.coverage, coverageLoading: locationState.loading, coverageError: locationState.error, retryCoverage: locationState.retry };
 
   function updateParams(updates: Record<string, string>) {
     const next = new URLSearchParams(params.toString());
@@ -32,18 +36,18 @@ export function SearchBar({ showEventPlanner = false, showBudget = false }: { sh
     router.push(`/search?${next.toString()}`);
   }
 
-  const areaOptions = LIMPOPO_AREAS.map((a) => ({ value: a, label: a }));
   const serviceOptions = SERVICES.map((s) => ({ value: s.slug, label: s.label }));
   const activeFilterCount = (minPrice || maxPrice ? 1 : 0) + (pricingType ? 1 : 0) + (unitLabel ? 1 : 0);
 
   return (
     <div className="sticky top-0 z-30 space-y-3 bg-offwhite">
       <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white px-2 py-2 shadow-sm w-fit mx-auto">
-        <SelectDropdown
-          placeholder="All Limpopo areas"
-          options={areaOptions}
-          value={area}
-          onChange={(value) => updateParams({ area: value })}
+        <LocationDropdown
+          {...locationState}
+          province={province}
+          area={area}
+          services={services}
+          onChange={(selectedProvince, selectedArea) => updateParams({ province: selectedProvince, area: selectedArea })}
         />
 
         <div className="h-6 w-px bg-black/10" />
@@ -80,9 +84,12 @@ export function SearchBar({ showEventPlanner = false, showBudget = false }: { sh
             </span>
           )}
         </button>
-        {showBudget && <BudgetButton minPrice={minPrice} maxPrice={maxPrice} pricingType={pricingType} unitLabel={unitLabel} area={area} services={services} onApply={applyPricing} />}
+        {showBudget && <BudgetButton {...coverageProps} minPrice={minPrice} maxPrice={maxPrice} pricingType={pricingType} unitLabel={unitLabel} province={province} area={area} services={services} onApply={applyPricing} />}
         {showEventPlanner && <PlanEventButton />}
       </div>
+      {showEventPlanner && <p className="pb-1 text-center text-xs leading-5 text-ink/55">
+        {locationState.coverage?.launchProvinceIds.length ? `Launching in ${locationState.coverage.provinces.filter(item => item.isLaunched).map(item => item.label).join(" and ")}. ` : ""}Growing across South Africa.
+      </p>}
 
       <FiltersModal
         open={filtersOpen}
@@ -91,8 +98,10 @@ export function SearchBar({ showEventPlanner = false, showBudget = false }: { sh
         maxPrice={maxPrice}
         pricingType={pricingType}
         unitLabel={unitLabel}
+        province={province}
         area={area}
         services={services}
+        {...coverageProps}
         onApply={applyPricing}
       />
     </div>

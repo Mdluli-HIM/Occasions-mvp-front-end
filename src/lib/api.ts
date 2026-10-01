@@ -1,7 +1,8 @@
 import type { PricingType } from "@/lib/pricing";
 import type { EventSummary } from "@/lib/event-api";
+import { isProvinceId, PROVINCES, resolveArea, type LocationCoverage } from "@/lib/locations";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export type Package = {
   id: string;
@@ -82,6 +83,7 @@ export class ProviderSearchError extends Error {
 
 export async function fetchProviders(params: {
   area?: string;
+  province?: string;
   services?: string;
   minPrice?: string;
   maxPrice?: string;
@@ -90,6 +92,7 @@ export async function fetchProviders(params: {
 }, signal?: AbortSignal): Promise<Provider[]> {
   const qs = new URLSearchParams();
   if (params.area) qs.set("area", params.area);
+  if (params.province) qs.set("province", params.province);
   if (params.services) qs.set("services", params.services);
   if (params.minPrice) qs.set("minPrice", params.minPrice);
   if (params.maxPrice) qs.set("maxPrice", params.maxPrice);
@@ -103,10 +106,34 @@ export async function fetchProviders(params: {
   });
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
-    const message = res.status === 400 && body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : "Providers are temporarily unavailable. Please try again.";
+    const message = res.status === 400
+      ? body && typeof body === "object" && "error" in body && typeof body.error === "string" ? body.error : "Check your selected location, service and price filters."
+      : "Providers are temporarily unavailable. Please try again.";
     throw new ProviderSearchError(res.status, message);
   }
   return res.json();
+}
+
+export async function fetchLocationCoverage(signal?: AbortSignal): Promise<LocationCoverage> {
+  const res = await fetch(`${API_URL}/api/categories/locations`, { cache: "no-store", signal });
+  if (!res.ok) throw new Error("Available locations couldn't be loaded. Please try again.");
+  const data: unknown = await res.json();
+  const validCounts = (value: unknown) => !!value && typeof value === "object" && !Array.isArray(value)
+    && Object.values(value).every(count => typeof count === "number" && Number.isSafeInteger(count) && count >= 0);
+  const validCount = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+  if (!data || typeof data !== "object" || !("launchProvinceIds" in data) || !Array.isArray(data.launchProvinceIds)
+    || !data.launchProvinceIds.every(isProvinceId) || !("providerCount" in data) || !validCount(data.providerCount)
+    || !("provinces" in data) || !Array.isArray(data.provinces) || data.provinces.length !== PROVINCES.length
+    || new Set(data.provinces.map(province => province?.id)).size !== PROVINCES.length
+    || !data.provinces.every(province => province && isProvinceId(province.id) && typeof province.label === "string"
+      && typeof province.isLaunched === "boolean" && validCount(province.providerCount) && validCounts(province.serviceCounts)
+      && Array.isArray(province.areas) && province.areas.every((area: Record<string, unknown>) => area
+        && typeof area.value === "string" && resolveArea(area.value)?.provinceId === province.id
+        && typeof area.town === "string" && area.provinceId === province.id
+        && validCount(area.providerCount) && validCounts(area.serviceCounts)))) {
+    throw new Error("Available locations couldn't be loaded. Please try again.");
+  }
+  return data as LocationCoverage;
 }
 
 export async function fetchProvider(slug: string, signal?: AbortSignal): Promise<Provider | null> {

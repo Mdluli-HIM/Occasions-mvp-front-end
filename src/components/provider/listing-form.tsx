@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
-import { Building2, Check, ImagePlus, Trash2, UserRound } from "lucide-react";
-import { LIMPOPO_AREAS, SERVICES } from "@/lib/taxonomy";
+import { Building2, Check, ImagePlus, Trash2, UserRound, X } from "lucide-react";
+import { SERVICES } from "@/lib/taxonomy";
+import { locationLabel, normalizeArea, resolveArea, sameArea } from "@/lib/locations";
+import { ProvinceTownPicker } from "@/components/locations/province-town-picker";
+import { useLocationCoverage } from "@/components/locations/use-location-coverage";
 import { PackagesEditor } from "@/components/provider/packages-editor";
 import {
   deleteListingPhoto,
@@ -97,6 +100,9 @@ export function ListingForm({ mode, initialStep = 0 }: {
   const [loadError, setLoadError] = useState("");
   const [step, setStep] = useState(Math.min(Math.max(initialStep, 0), STEPS.length - 1));
   const [form, setForm] = useState<ListingInput>(EMPTY);
+  const [newArea, setNewArea] = useState("");
+  const [areaError, setAreaError] = useState("");
+  const { coverage, isAreaLaunched, unavailable: coverageUnavailable, retry: retryCoverage } = useLocationCoverage();
   const [otherService, setOtherService] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
@@ -107,6 +113,8 @@ export function ListingForm({ mode, initialStep = 0 }: {
   const isCompany = form.providerType === "company";
   const publicName = form.profileName.trim() || form.name.trim();
   const initials = publicName.split(/\s+/).filter((part) => part && part !== "&").slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  const futureAreas = form.areasServed.filter((area) => !isAreaLaunched(area));
+  const servesLaunchedArea = form.areasServed.some(isAreaLaunched);
 
   useEffect(() => {
     let active = true;
@@ -157,10 +165,17 @@ export function ListingForm({ mode, initialStep = 0 }: {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function toggleArea(area: string) {
-    set("areasServed", form.areasServed.includes(area)
-      ? form.areasServed.filter((value) => value !== area)
-      : [...form.areasServed, area]);
+  function addArea() {
+    const area = normalizeArea(newArea);
+    if (!area) {
+      setAreaError("Choose a town or enter a town name with 2 to 80 characters.");
+      return;
+    }
+    if (!form.areasServed.some((selected) => sameArea(selected, area))) {
+      set("areasServed", [...form.areasServed, area]);
+    }
+    setNewArea("");
+    setAreaError("");
   }
 
   function validate(candidateStep: number): string {
@@ -178,6 +193,7 @@ export function ListingForm({ mode, initialStep = 0 }: {
       if (!form.serviceSlug) return "Choose the service you offer.";
       if (form.serviceSlug === "other" && !otherService.trim()) return "Tell us what service you offer.";
       if (form.areasServed.length === 0) return "Pick at least one area you serve.";
+      if (form.areasServed.some((area) => !resolveArea(area))) return "Choose a province and town for every area you serve.";
       if (!form.workingHoursStart || !form.workingHoursEnd) return "Choose your opening and closing times.";
       if (form.workingHoursEnd <= form.workingHoursStart) return "Closing time must be after opening time.";
     }
@@ -376,12 +392,29 @@ export function ListingForm({ mode, initialStep = 0 }: {
                 <input id="other-service" className={inputClass} value={otherService} onChange={(e) => setOtherService(e.target.value)} placeholder="e.g. Balloon Artist, Live Band, Wedding Planner" />
               </Field>
             )}
-            <Field label="Areas you serve" hint="Select every town you travel to.">
-              <div className="flex flex-wrap gap-2">
-                {LIMPOPO_AREAS.map((area) => (
-                  <button key={area} type="button" aria-pressed={form.areasServed.includes(area)} onClick={() => toggleArea(area)} className={clsx("rounded-full border px-4 py-2.5 text-sm transition-colors", form.areasServed.includes(area) ? "border-coral bg-coral-soft font-medium text-coral" : "border-black/15 bg-white text-ink hover:border-ink")}>{area}</button>
-                ))}
-              </div>
+            <Field label="Areas you serve" hint="Add every town you travel to. You can choose areas in more than one province.">
+              <p className="text-sm font-medium text-ink">Starting in Limpopo. Growing across South Africa.</p>
+              <ProvinceTownPicker id="listing-area" value={newArea} onChange={(area) => { setNewArea(area); setAreaError(""); }} />
+              <button type="button" onClick={addArea} className="rounded-full border border-black/15 bg-white px-5 py-2.5 text-sm font-semibold text-ink hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-coral">Add service area</button>
+              {areaError && <p role="alert" className="text-sm text-coral">{areaError}</p>}
+              {form.areasServed.length > 0 && <div className="space-y-2 pt-2">
+                <p className="text-sm font-medium text-ink">Selected service areas ({form.areasServed.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {form.areasServed.map((area) => <button key={area} type="button"
+                    onClick={() => set("areasServed", form.areasServed.filter((value) => value !== area))}
+                    aria-label={`Remove ${locationLabel(area)}`} className="inline-flex items-center gap-2 rounded-full border border-coral bg-coral-soft px-4 py-2.5 text-left text-sm font-medium text-coral focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-coral">
+                    {locationLabel(area)}<X size={14} className="shrink-0" aria-hidden="true" />
+                  </button>)}
+                </div>
+              </div>}
+              {futureAreas.length > 0 && <p className="rounded-xl bg-offwhite p-4 text-sm leading-relaxed text-ink/65">
+                {!coverage
+                  ? "You can prepare service areas across South Africa. Launch starts in Limpopo; check launch coverage before publishing."
+                  : servesLaunchedArea
+                  ? "Publishing makes your listing available in launched provinces. Your other service areas are saved for future launches."
+                  : "You can prepare and publish your listing now. It stays hidden from customer search until one of your service provinces launches."}
+              </p>}
+              {coverageUnavailable && <p className="text-sm leading-relaxed text-black/50">Launch information is temporarily unavailable. Limpopo is our initial launch province. <button type="button" onClick={retryCoverage} className="font-medium text-coral underline">Check again</button></p>}
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Opens" htmlFor="working-hours-start"><input id="working-hours-start" type="time" className={inputClass} value={form.workingHoursStart} onChange={(e) => set("workingHoursStart", e.target.value)} /></Field>

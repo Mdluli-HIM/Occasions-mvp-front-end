@@ -7,7 +7,10 @@ import { Baby, Building2, Cake, Check, Flower2, GraduationCap, Heart, PartyPoppe
 import { clsx } from "clsx";
 import { createEvent, getEvent, updateEvent, type EventBrief, type EventInput } from "@/lib/event-api";
 import { EVENT_TYPES, suggestedServices } from "@/lib/event-types";
-import { LIMPOPO_AREAS, SERVICES } from "@/lib/taxonomy";
+import { SERVICES } from "@/lib/taxonomy";
+import { normalizeArea, resolveArea } from "@/lib/locations";
+import { ProvinceTownPicker } from "@/components/locations/province-town-picker";
+import { useLocationCoverage } from "@/components/locations/use-location-coverage";
 import { usePlannerAuth } from "@/components/events/use-planner-auth";
 import { bookingService, eventRequestError, isCalendarDate, isCancelledRequest, todayInSouthAfrica } from "@/components/events/event-utils";
 
@@ -33,6 +36,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
   const router = useRouter();
   const { ready, token } = usePlannerAuth();
   const [form, setForm] = useState<EventInput>(EMPTY);
+  const { coverage, isAreaLaunched, unavailable: coverageUnavailable, retry: retryCoverage } = useLocationCoverage();
   const [original, setOriginal] = useState<EventBrief | null>(null);
   const [loading, setLoading] = useState(!!eventId);
   const [loadError, setLoadError] = useState("");
@@ -93,7 +97,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
       if (!form.title.trim() || form.title.trim().length > 100) return "Give your occasion a name in 1 to 100 characters.";
     }
     if (candidate === 1) {
-      if (!LIMPOPO_AREAS.some((area) => area === form.area)) return "Choose the area for your occasion.";
+      if (!resolveArea(form.area) && !(hasBookings && form.area === original?.area)) return "Choose a province and town for your occasion.";
       if (!isCalendarDate(form.eventDate)) return "Choose a valid event date.";
       if (form.eventDate < today && form.eventDate !== original?.eventDate) return "Choose today or a future date for your occasion.";
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(form.startTime)) return "Choose a valid start time.";
@@ -126,7 +130,7 @@ export function EventForm({ eventId }: { eventId?: string }) {
     savingRef.current = true;
     setSaving(true);
     setError("");
-    const data: EventInput = { ...form, title: form.title.trim(),
+    const data: EventInput = { ...form, area: hasBookings ? form.area : normalizeArea(form.area) ?? form.area, title: form.title.trim(),
       customEventType: form.eventType === "other" ? form.customEventType.trim() : "",
       otherService: form.serviceSlugs.includes("other") ? form.otherService.trim() : "", notes: form.notes.trim() };
     try {
@@ -158,7 +162,13 @@ export function EventForm({ eventId }: { eventId?: string }) {
         </>}
         {step === 1 && <>
           {hasBookings && <p className="rounded-xl border border-black/10 bg-white p-4 text-sm leading-relaxed text-black/55">This occasion has bookings. Its area, date and guest count stay fixed so the plan matches those bookings. Changing the start time or notes won’t change existing bookings.</p>}
-          <Field id="event-area" label="Where is it happening?"><select id="event-area" className={inputClass} value={form.area} onChange={(e) => set("area", e.target.value)} disabled={hasBookings}><option value="">Choose an area</option>{LIMPOPO_AREAS.map((area) => <option key={area} value={area}>{area}</option>)}</select></Field>
+          <div className="space-y-4">
+            <h2 className="text-sm font-semibold text-ink">Where is it happening?</h2>
+            <p className="text-sm font-medium text-ink">Starting in Limpopo. Growing across South Africa.</p>
+            <ProvinceTownPicker id="event-area" value={form.area} onChange={(area) => set("area", area)} disabled={hasBookings} />
+            {form.area && !isAreaLaunched(form.area) && <p className="rounded-xl bg-white p-4 text-sm leading-relaxed text-ink/65">{coverage ? "You can save a plan for this area now. This province has not launched yet, so new bookings through Occasions are not available here. Check back as coverage grows." : "You can save a plan for this area now. Launch starts in Limpopo; confirm local coverage when you choose services."}</p>}
+            {coverageUnavailable && <p className="text-sm leading-relaxed text-black/50">Launch information is temporarily unavailable. Our launch starts in Limpopo. <button type="button" onClick={retryCoverage} className="font-medium text-coral underline">Check again</button></p>}
+          </div>
           <div className="grid gap-4 sm:grid-cols-2"><Field id="event-date" label="Date"><input id="event-date" type="date" min={original && original.eventDate < today ? original.eventDate : today} className={inputClass} value={form.eventDate} onChange={(e) => set("eventDate", e.target.value)} disabled={hasBookings} /></Field><Field id="event-time" label="Start time" hint="South Africa time. Setup times can differ when booking."><input id="event-time" type="time" className={inputClass} value={form.startTime} onChange={(e) => set("startTime", e.target.value)} /></Field></div>
           <Field id="event-guests" label="How many guests?" hint="Use a whole number, from 1 to 10,000."><input id="event-guests" type="number" min={1} max={10000} step={1} className={`${inputClass} max-w-xs`} value={form.guests || ""} onChange={(e) => set("guests", Number(e.target.value))} disabled={hasBookings} /></Field>
           <Field id="event-notes" label="Venue details and notes" hint={`${form.notes.length}/1,000 characters · Optional. Shared only with providers booked for this event.`}><textarea id="event-notes" rows={4} className={inputClass} maxLength={1000} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="e.g. Outdoor venue, setup by 09:00, or dietary preferences." /></Field>

@@ -6,12 +6,16 @@ import Image from "next/image";
 import { Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { getMyListing, setListingStatus, type MyListing } from "@/lib/provider-api";
+import { locationLabel } from "@/lib/locations";
+import { useLocationCoverage } from "@/components/locations/use-location-coverage";
 
 export default function ListingsPage() {
   const [listing, setListing] = useState<MyListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toggling, setToggling] = useState(false);
+  const { coverage, error: coverageError, retry: retryCoverage, isAreaLaunched } = useLocationCoverage();
+  const awaitsLaunch = !!coverage && !!listing && !listing.areasServed.some(isAreaLaunched);
 
   useEffect(() => {
     getMyListing()
@@ -47,6 +51,7 @@ export default function ListingsPage() {
           </Link>
         )}
       </div>
+      <p className="-mt-6 mb-8 text-sm leading-relaxed text-black/55">Starting in Limpopo. Growing across South Africa. Providers nationwide can prepare their listings now.</p>
 
       {error && (
         <p className="mb-6 rounded-xl bg-coral-soft px-4 py-3 text-sm text-coral">{error}</p>
@@ -91,7 +96,7 @@ export default function ListingsPage() {
           </div>
 
           <div className="mt-12 flex flex-col items-center text-center">
-            <p className="text-lg text-ink mb-6">Create a listing and start getting booked.</p>
+            <p className="text-lg text-ink mb-6">Create a listing and get ready for customers.</p>
             <Link
               href="/provider/listings/new"
               className="inline-flex items-center gap-2 rounded-full bg-coral px-6 py-3 font-semibold text-white hover:bg-coral-hover transition-colors"
@@ -121,16 +126,16 @@ export default function ListingsPage() {
               <span
                 className={clsx(
                   "shrink-0 rounded-full px-3 py-1 text-xs font-semibold",
-                  listing.status === "live"
+                  listing.status === "live" && !awaitsLaunch
                     ? "bg-green-100 text-green-800"
                     : "bg-black/5 text-black/60"
                 )}
               >
-                {listing.status === "live" ? "Live" : "Draft"}
+                {listing.status === "live" ? !coverage ? "Published" : awaitsLaunch ? "Ready for launch" : "Live" : "Draft"}
               </span>
             </div>
             <p className="mt-3 text-sm text-black/55">
-              {listing.areasServed.join(", ")} · {listing.packages.length}{" "}
+              {listing.areasServed.map(locationLabel).join(" · ")} · {listing.packages.length}{" "}
               {listing.packages.length === 1 ? "package" : "packages"} · {listing.media.length}{" "}
               {listing.media.length === 1 ? "photo" : "photos"}
             </p>
@@ -150,10 +155,12 @@ export default function ListingsPage() {
                     </Link>
                   </>
                 ) : (
-                  "Drafts are hidden from customers until you publish."
+                  awaitsLaunch ? "Publish now to be ready for launch. Your listing stays hidden until one of your service provinces launches." : "Drafts are hidden from customers until you publish."
                 )}
               </p>
             )}
+            {listing.status === "live" && awaitsLaunch && <p className="mt-3 rounded-xl bg-offwhite p-3 text-sm leading-relaxed text-black/60">Your listing is published and ready. It remains hidden from customer search until one of your service provinces launches.</p>}
+            {coverageError && <p className="mt-3 text-xs leading-relaxed text-black/50">Launch information is unavailable. Publishing does not confirm customer visibility. <button type="button" onClick={retryCoverage} className="font-medium text-coral underline">Check again</button></p>}
             <button
               onClick={togglePublish}
               disabled={toggling || (listing.status === "draft" && listing.packages.length === 0)}

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Occasions",
-  description: "Find and book event service providers in Limpopo",
+  description: "Find and book event services across South Africa. Occasions is launching in Limpopo first, bringing your occasion together in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

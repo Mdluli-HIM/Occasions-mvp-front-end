@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Armchair, Camera, Check, ChevronDown, Flower2, MapPin, Music, Snowflake, Sparkles, Tent, Toilet, Utensils, X } from "lucide-react";
+import { Armchair, Camera, Check, Flower2, Music, Snowflake, Sparkles, Tent, Toilet, Utensils, X } from "lucide-react";
 import { fetchProviders, type Provider } from "@/lib/api";
 import { isValidPriceRange } from "@/lib/price-range";
 import { countMatchingProviders, priceSamples, unitOptions } from "@/lib/search-price-data";
-import { LIMPOPO_AREAS, SERVICES } from "@/lib/taxonomy";
+import { SERVICES } from "@/lib/taxonomy";
+import type { LocationCoverage } from "@/lib/locations";
+import { LocationChoices } from "@/components/search/location-choices";
 import { PriceRangeSlider } from "@/components/search/price-range-slider";
 
 export type PricingFilterProps = {
@@ -13,9 +15,14 @@ export type PricingFilterProps = {
   maxPrice: string;
   pricingType: string;
   unitLabel: string;
+  province: string;
   area: string;
   services: string[];
-  onApply: (minimum: string, maximum: string, pricingType: string, unitLabel: string, area: string, services: string[]) => void;
+  coverage: LocationCoverage | null;
+  coverageLoading: boolean;
+  coverageError: string;
+  retryCoverage: () => void;
+  onApply: (minimum: string, maximum: string, pricingType: string, unitLabel: string, area: string, services: string[], province: string) => void;
 };
 
 const pricingChoices = [
@@ -35,8 +42,8 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
   const [basis, setBasis] = useState(props.pricingType || (clearAll ? "" : "per_guest"));
   const [unit, setUnit] = useState(props.unitLabel);
   const [area, setArea] = useState(props.area);
+  const [province, setProvince] = useState(props.province);
   const [services, setServices] = useState(props.services);
-  const [showAllAreas, setShowAllAreas] = useState(false);
   const [otherUnit, setOtherUnit] = useState(false);
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
@@ -45,7 +52,7 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
   const initialFocusRef = useRef<HTMLInputElement>(null);
   const unitRef = useRef<HTMLInputElement>(null);
   const id = useId();
-  const queryKey = JSON.stringify([area, services]);
+  const queryKey = JSON.stringify([province, area, services]);
   const currentCatalog = catalog?.key === queryKey ? catalog : null;
   const providers = currentCatalog?.providers;
   const prices = useMemo(() => priceSamples(providers ?? [], basis, unit), [providers, basis, unit]);
@@ -78,9 +85,9 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
 
   useEffect(() => {
     const controller = new AbortController();
-    const [selectedArea, selectedServices] = JSON.parse(queryKey) as [string, string[]];
+    const [selectedProvince, selectedArea, selectedServices] = JSON.parse(queryKey) as [string, string, string[]];
     // Fetch the catalog without a budget so applying a range never narrows its track.
-    fetchProviders({ area: selectedArea, services: selectedServices.join(",") }, controller.signal)
+    fetchProviders({ province: selectedProvince, area: selectedArea, services: selectedServices.join(",") }, controller.signal)
       .then(result => { if (!controller.signal.aborted) setCatalog({ key: queryKey, providers: result, error: false }); })
       .catch(() => { if (!controller.signal.aborted) setCatalog({ key: queryKey, providers: [], error: true }); });
     return () => controller.abort();
@@ -96,7 +103,7 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
   function chooseUnit(value: string) { setUnit(value); setOtherUnit(false); resetRange(); }
   function clearDraft() {
     resetRange();
-    if (clearAll) { setBasis(""); setUnit(""); setOtherUnit(false); setArea(""); setServices([]); }
+    if (clearAll) { setBasis(""); setUnit(""); setOtherUnit(false); setArea(""); setProvince(""); setServices([]); }
   }
   function apply() {
     const min = minimum.trim(); const max = maximum.trim();
@@ -108,7 +115,7 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
       unitRef.current?.focus();
       return setError("Choose a unit to compare, such as table or chair (up to 30 characters).");
     }
-    props.onApply(min ? String(Number(min)) : "", max ? String(Number(max)) : "", basis, label, area, services);
+    props.onApply(min ? String(Number(min)) : "", max ? String(Number(max)) : "", basis, label, area, services, province);
     onClose();
   }
 
@@ -170,11 +177,7 @@ export function PricingFilterDialog({ title, onClose, clearAll = false, ...props
             </section>
             <section className="py-7 sm:py-8" aria-labelledby={`${id}-location-title`}>
               <h3 id={`${id}-location-title`} className="mb-5 text-xl font-semibold sm:text-2xl">Location</h3>
-              <div className="flex flex-wrap gap-3">
-                <button type="button" aria-pressed={!area} onClick={() => setArea("")} className={`${chipClass} ${!area ? "border-ink bg-offwhite" : "border-black/15 hover:border-ink"}`}><MapPin size={20} aria-hidden="true" />All Limpopo areas</button>
-                {LIMPOPO_AREAS.filter((value, index) => showAllAreas || index < 6 || value === area).map(value => <button type="button" key={value} aria-pressed={area === value} onClick={() => setArea(area === value ? "" : value)} className={`${chipClass} ${area === value ? "border-ink bg-offwhite" : "border-black/15 hover:border-ink"}`}>{value}{area === value && <Check size={15} aria-hidden="true" />}</button>)}
-              </div>
-              <button type="button" onClick={() => setShowAllAreas(value => !value)} aria-expanded={showAllAreas} className={`mt-5 inline-flex items-center gap-2 text-sm font-semibold underline underline-offset-4 ${focusClass}`}>{showAllAreas ? "Show fewer areas" : "Show more areas"}<ChevronDown size={18} aria-hidden="true" className={showAllAreas ? "rotate-180" : ""} /></button>
+              <LocationChoices coverage={props.coverage} loading={props.coverageLoading} error={props.coverageError} retry={props.retryCoverage} province={province} area={area} services={services} onChange={(selectedProvince, selectedArea) => { setProvince(selectedProvince); setArea(selectedArea); }} />
             </section>
           </>}
         </div>

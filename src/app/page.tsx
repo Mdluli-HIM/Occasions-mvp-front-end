@@ -23,7 +23,7 @@ export default async function HomePage() {
         <SearchBar showEventPlanner />
       </Suspense>
 
-      <ServiceTiles />
+      <ServiceTiles availableServices={providersUnavailable ? undefined : sections.map(section => section.serviceSlug)} />
       <RecentlyViewedRow />
 
       {providersUnavailable ? (

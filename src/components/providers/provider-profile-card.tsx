@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { ArrowDown, Star } from "lucide-react";
 import type { Provider } from "@/lib/api";
+import { locationLabel } from "@/lib/locations";
+import { MessageProviderButton } from "@/components/messages/message-provider-button";
 
 export function ProviderProfileCard({
   provider,
@@ -89,7 +91,7 @@ export function ProviderProfileCard({
           </p>
           {provider.areasServed.length > 0 && (
             <p className="text-ink/60 break-words">
-              Serving {provider.areasServed.slice(0, 3).join(", ")}
+              Serving {provider.areasServed.slice(0, 3).map(locationLabel).join(" · ")}
               {provider.areasServed.length > 3 && ` + ${provider.areasServed.length - 3} more`}
             </p>
           )}
@@ -104,6 +106,7 @@ export function ProviderProfileCard({
         >
           Explore packages <ArrowDown size={15} aria-hidden="true" />
         </a>}
+        <MessageProviderButton slug={provider.slug} name={portraitName} />
       </div>
     </section>
   );

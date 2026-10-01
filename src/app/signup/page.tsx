@@ -19,7 +19,7 @@ function SignupForm() {
   const router = useRouter();
   const params = useSearchParams();
   const setAuth = useAuthStore((s) => s.setAuth);
-  const [role, setRole] = useState<"customer" | "provider">("customer");
+  const [role, setRole] = useState<"customer" | "provider">(() => params.get("role") === "provider" ? "provider" : "customer");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -63,6 +63,7 @@ function SignupForm() {
           <button
             type="button"
             onClick={() => setRole("customer")}
+            aria-pressed={role === "customer"}
             className={`rounded-full py-3 text-sm font-medium transition-colors duration-150 ${
               role === "customer"
                 ? "bg-coral text-white"
@@ -74,6 +75,7 @@ function SignupForm() {
           <button
             type="button"
             onClick={() => setRole("provider")}
+            aria-pressed={role === "provider"}
             className={`rounded-full py-3 text-sm font-medium transition-colors duration-150 ${
               role === "provider"
                 ? "bg-coral text-white"

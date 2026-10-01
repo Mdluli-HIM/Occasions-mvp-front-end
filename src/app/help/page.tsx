@@ -13,7 +13,7 @@ const PLANNING_STEPS = [
   },
   {
     title: "Find the right services",
-    description: "Browse providers by category and area. Explore their profiles, photos and packages, then add the services you want to your cart.",
+    description: "Browse providers by category and area. Explore their profiles, photos and packages. Message a provider if you have questions before adding a service to your cart.",
   },
   {
     title: "Keep your requests together",
@@ -32,11 +32,19 @@ const PROVIDER_STEPS = [
   },
   {
     title: "Manage your bookings",
-    description: "Review your own incoming requests in Provider bookings. Confirm or decline them, and mark confirmed services as completed after the event.",
+    description: "Reply to customer questions in Messages. Review your incoming requests in Provider bookings, confirm or decline them, and mark confirmed services as completed after the event.",
   },
 ];
 
 const QUESTIONS = [
+  {
+    question: "Can I ask a provider questions before booking?",
+    answer: "Yes. Choose Message provider on their profile and sign in to start a private conversation. Customers and providers can reply from Messages. A message does not create or confirm a booking. Messages currently support text only.",
+  },
+  {
+    question: "Can I plan or list services outside Limpopo?",
+    answer: "Yes. You can save event plans and prepare provider listings for towns across South Africa. Limpopo is our initial launch. Listings outside active provinces stay hidden from customers until their province launches. Check the available locations when browsing services.",
+  },
   {
     question: "Does sending a request confirm my booking?",
     answer: "Each provider reviews their request separately. A request stays pending until that provider confirms it. Check the status of each service before your event.",
@@ -64,9 +72,10 @@ export default function HelpPage() {
         <p className="mb-3 text-sm font-medium text-coral">Your occasion, brought together</p>
         <h1 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">Help & how it works</h1>
         <p className="mt-4 text-base leading-7 text-ink/65">
-          Occasions brings event planners and service providers in Limpopo together.
+          Occasions brings event planners and service providers across South Africa together.
           Find the services you need and keep your event’s bookings in one place.
         </p>
+        <p className="mt-3 text-sm font-medium leading-6 text-ink/65">Starting in Limpopo. Growing across South Africa.</p>
       </div>
 
       <div className="mt-12 grid gap-12 md:grid-cols-2 md:gap-16">

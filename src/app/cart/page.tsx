@@ -10,6 +10,7 @@ import { EventApiError, getEvents, type EventBrief } from "@/lib/event-api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useAuthHydrated, useCartHydrated } from "@/lib/use-auth-hydrated";
 import { billedQuantity, formatPackagePrice, guestCapacityProblem, normalizePricingType } from "@/lib/pricing";
+import { sameArea } from "@/lib/locations";
 import { Trash2 } from "lucide-react";
 
 type EventResult = { key: string; events?: EventBrief[]; error?: string };
@@ -98,7 +99,7 @@ export default function CartPage() {
     const event = events.find((saved) => saved.id === item.eventId);
     if (!event) return "This event is no longer available for your account. Select another event or make this a standalone service.";
     if (!event.serviceSlugs.includes(item.serviceSlug)) return "This service is no longer selected in the event. Edit your plan or make this service standalone.";
-    if (catalogState?.packages && !catalogState.packages[item.packageId]?.areas.includes(event.area)) return "This provider doesn't serve the event area. Choose another provider or make this service standalone.";
+    if (catalogState?.packages && !catalogState.packages[item.packageId]?.areas.some((area) => sameArea(area, event.area))) return "This provider doesn't serve the event area. Choose another provider or make this service standalone.";
     if (event.eventDate !== item.eventDate || event.guests !== item.guests) return "Your event date or guest count changed. Apply the latest plan details below.";
     return null;
   }
@@ -166,7 +167,7 @@ export default function CartPage() {
           const event = events.find((saved) => saved.id === item.eventId);
           const problem = linkedProblem(item) || pricingProblem(item);
           const unavailable = !!catalogState?.packages && !catalogState.packages[item.packageId];
-          const eligibleEvents = events.filter((saved) => saved.serviceSlugs.includes(item.serviceSlug) && (!catalogState?.packages || catalogState.packages[item.packageId]?.areas.includes(saved.area)));
+          const eligibleEvents = events.filter((saved) => saved.serviceSlugs.includes(item.serviceSlug) && (!catalogState?.packages || catalogState.packages[item.packageId]?.areas.some((area) => sameArea(area, saved.area))));
           return <div key={item.itemId} className="rounded-2xl border border-black/10 bg-white p-4 space-y-4">
             <div className="flex gap-3"><div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/5">{item.photoUrl && <Image src={item.photoUrl} alt={item.packageTitle} fill className="object-cover" unoptimized={item.photoUrl.startsWith("http")} />}</div><div className="flex-1 min-w-0"><p className="font-medium text-ink">{item.packageTitle}</p><p className="text-sm text-ink/60">{item.providerName}</p><p className="text-sm text-ink">{formatPackagePrice(item)}{item.pricingType === "per_guest" && item.minPriceValue > 0 && ` · minimum R ${item.minPriceValue.toLocaleString("en-ZA")}`}</p></div><button type="button" disabled={busy} onClick={() => removeItem(item.itemId)} className="self-start text-ink/40 hover:text-red-600" aria-label={`Remove ${item.packageTitle}`}><Trash2 size={16} /></button></div>
             <label className="block text-sm text-ink/60">Event<select value={item.eventId ?? ""} disabled={busy || !eventState?.events || !catalogState?.packages} onChange={(e) => chooseEvent(item, e.target.value)} className={`${inputClass} mt-1`}><option value="">Standalone service</option>{item.eventId && !eligibleEvents.some((saved) => saved.id === item.eventId) && <option value={item.eventId}>{event ? event.title : "Unavailable event"}</option>}{eligibleEvents.map((saved) => <option key={saved.id} value={saved.id}>{saved.title}</option>)}</select></label>

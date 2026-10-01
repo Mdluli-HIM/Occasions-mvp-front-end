@@ -9,6 +9,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { cartItemId, useCartStore } from "@/lib/cart-store";
 import { calculatePackageTotal, formatPackagePrice, guestCapacityProblem, normalizePricingType } from "@/lib/pricing";
 import { useAuthHydrated, useCartHydrated } from "@/lib/use-auth-hydrated";
+import { locationLabel, sameArea } from "@/lib/locations";
 import { Check, Plus } from "lucide-react";
 
 type EventResult = { key: string; event: EventBrief; error?: never } | { key: string; event?: never; error: string };
@@ -23,7 +24,7 @@ export function PackageList({ provider, packages, eventId, detail = false }: { p
   const key = JSON.stringify([eventId, token, user?.id, attempt]);
   const current = result?.key === key ? result : null;
   const event = current?.event;
-  const fitsEvent = !!event && event.serviceSlugs.includes(provider.serviceSlug) && provider.areasServed.includes(event.area);
+  const fitsEvent = !!event && event.serviceSlugs.includes(provider.serviceSlug) && provider.areasServed.some((area) => sameArea(area, event.area));
   const providerPath = `/providers/${encodeURIComponent(provider.slug)}`;
   const packagePath = (id: string) => `${providerPath}/packages/${encodeURIComponent(id)}${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ""}`;
   const returnPath = detail && packages[0] ? packagePath(packages[0].id) : `${providerPath}${eventId ? `?eventId=${encodeURIComponent(eventId)}` : ""}`;
@@ -52,7 +53,7 @@ export function PackageList({ provider, packages, eventId, detail = false }: { p
         <div className="rounded-2xl bg-coral-soft p-4 text-sm text-ink space-y-2">
           {!hydrated ? <p>Loading your event…</p> : !token || !user ? <p><Link href={loginPath} className="font-medium text-coral">Log in</Link> to choose services for this event.</p> : current?.error ? <><p role="alert">{current.error}</p><button type="button" className="font-medium text-coral" onClick={() => setAttempt((n) => n + 1)}>Try again</button></> : !event ? <p>Loading your event…</p> : <>
             <p className="font-semibold">Choosing for {event.title}</p>
-            <p>{event.eventDate} · {event.startTime} · {event.guests} guests · {event.area}</p>
+            <p>{event.eventDate} · {event.startTime} · {event.guests} guests · {locationLabel(event.area)}</p>
             {!fitsEvent && <p>This provider must serve your event area and its service must be selected in your plan before adding a package.</p>}
             <div className="flex gap-4"><Link href={`/events/${encodeURIComponent(event.id)}`} className="font-medium text-coral">Back to event</Link>{!fitsEvent && <Link href={`/events/${encodeURIComponent(event.id)}/edit`} className="font-medium text-coral">Edit plan</Link>}</div>
           </>}

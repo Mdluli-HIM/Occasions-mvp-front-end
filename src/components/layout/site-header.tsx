@@ -7,15 +7,18 @@ import { useCartStore } from "@/lib/cart-store";
 import { useAuthStore } from "@/lib/auth-store";
 import { useModeStore } from "@/lib/mode-store";
 import { clsx } from "clsx";
+import { useMessageUnread } from "@/components/messages/use-message-unread";
 
 const PLANNING_LINKS = [
   { href: "/events/new", label: "Plan an event" },
   { href: "/events", label: "My events" },
+  { href: "/messages", label: "Messages" },
 ];
 
 const PROVIDER_LINKS = [
   { href: "/provider/listings", label: "Listings" },
   { href: "/provider/bookings", label: "Bookings" },
+  { href: "/messages", label: "Messages" },
 ];
 
 export function SiteHeader() {
@@ -24,6 +27,7 @@ export function SiteHeader() {
   const { mode, setMode } = useModeStore();
   const router = useRouter();
   const pathname = usePathname();
+  const { count: unreadMessages } = useMessageUnread();
 
   const providing = !!user && mode === "providing";
 
@@ -57,6 +61,11 @@ export function SiteHeader() {
                 )}
               >
                 {link.label}
+                {link.href === "/messages" && unreadMessages > 0 && (
+                  <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-coral px-1 text-[10px] leading-4 text-white" aria-label={`${unreadMessages} unread messages`}>
+                    {unreadMessages > 99 ? "99+" : unreadMessages}
+                  </span>
+                )}
               </Link>
             ))}
         </nav>
